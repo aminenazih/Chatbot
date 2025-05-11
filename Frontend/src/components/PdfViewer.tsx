@@ -3,9 +3,15 @@ import { useParams } from 'react-router-dom';
 
 interface PdfViewerProps {
   docId?: string; // Optional prop for when component is used directly
+  height?: string; // Allow customizing the iframe height
+  showTitle?: boolean; // Option to hide the title when used in a parent component that has its own title
 }
 
-const PdfViewer: React.FC<PdfViewerProps> = ({ docId: propDocId }) => {
+const PdfViewer: React.FC<PdfViewerProps> = ({ 
+  docId: propDocId, 
+  height = '600px',
+  showTitle = true 
+}) => {
   const { docId: paramDocId } = useParams<{ docId: string }>();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,25 +30,32 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ docId: propDocId }) => {
 
       try {
         setLoading(true);
+        
         // Fetch PDF URL from the backend
-        const response = await fetch(`http://127.0.0.1:8000/documents/${documentId}`);
+        const apiUrl = `http://127.0.0.1:8000/documents/${documentId}`;
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
           throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
         
-        const data = await response.json();
+        const responseData = await response.json();
         
-        if (data.pdfUrl) {
-          setPdfUrl(data.pdfUrl);
-          setError(null);
+        // Try different possible response structures
+        if (responseData && responseData.pdfUrl) {
+          setPdfUrl(responseData.pdfUrl);
+        } else if (responseData && responseData.file && responseData.file.url) {
+          setPdfUrl(responseData.file.url);
+        } else if (responseData && responseData.url) {
+          setPdfUrl(responseData.url);
         } else {
-          // Handle case where PDF URL is not in the response
           throw new Error('PDF URL not found in response');
         }
-      } catch (error) {
+        
+        setError(null);
+      } catch (error: any) {
         console.error('Error fetching PDF:', error);
-        setError('Impossible de charger le document PDF');
+        setError(`Impossible de charger le document PDF: ${error.message}`);
       } finally {
         setLoading(false);
       }
@@ -77,11 +90,11 @@ const PdfViewer: React.FC<PdfViewerProps> = ({ docId: propDocId }) => {
 
   return (
     <div className="w-full">
-      <h2 className="text-xl font-semibold mb-4">Visualiseur de Document</h2>
+      {showTitle && <h2 className="text-xl font-semibold mb-4">Visualiseur de Document</h2>}
       <iframe
         src={pdfUrl}
         width="100%"
-        height="600px"
+        height={height}
         title="PDF Viewer"
         className="border rounded-md"
       ></iframe>

@@ -2,16 +2,21 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, FileText, History, Upload, MessageSquare, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 
 export default function Navigation() {
   const location = useLocation();
   const isActive = (path: string) => location.pathname === path;
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Searching for:', searchQuery);
-    // Implement search functionality here
+    if (searchQuery.trim()) {
+      navigate(`/dashboard?search=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   return (
@@ -75,22 +80,7 @@ export default function Navigation() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <form onSubmit={handleSearch} className="hidden md:block">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Rechercher un projet..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                />
-              </div>
-            </form>
-          </div>
+        
         </div>
       </div>
     </nav>

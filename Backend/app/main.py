@@ -98,12 +98,14 @@ async def upload_pdf(
             "filename": file.filename,
             "extracted_text": extracted_text,
             "markdown_text": markdown_text,
-            "uploaded_at": datetime.utcnow()
+            "uploaded_at": datetime.utcnow(),
+            # Store the file path for PDF access
+            "file_path": file_path
         }
         result = await pdf_collection.insert_one(doc)
         
-        # Clean up
-        os.remove(file_path)
+        # Don't remove the file since we need it for viewing
+        # os.remove(file_path) - comment this out
         
         return DocumentResponse(
             id=str(result.inserted_id),
@@ -168,10 +170,44 @@ async def list_documents():
         logger.error(f"Error listing documents: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# NEW ENDPOINT: Get a single document by ID
+@app.get("/documents/{document_id}")
+async def get_document(document_id: str):
+    """Get a single document by ID and return its PDF URL."""
+    try:
+        if not ObjectId.is_valid(document_id):
+            raise HTTPException(status_code=400, detail="Invalid document ID")
+
+        document = await pdf_collection.find_one({"_id": ObjectId(document_id)})
+        if not document:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        # Check if we have the file path stored
+        if "file_path" in document and os.path.exists(document["file_path"]):
+            # Convert file path to URL
+            file_name = os.path.basename(document["file_path"])
+            # You need to serve static files, see the static files route below
+            pdf_url = f"http://127.0.0.1:8000/static/{file_name}"
+            
+            return {
+                "_id": str(document["_id"]),
+                "filename": document["filename"],
+                "pdfUrl": pdf_url,  # This is what the frontend expects
+                "uploaded_at": document["uploaded_at"].isoformat() if "uploaded_at" in document else None
+            }
+        else:
+            # File path not found or file doesn't exist
+            raise HTTPException(status_code=404, detail="PDF file not found")
+            
+    except Exception as e:
+        logger.error(f"Error getting document: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Health check endpoint
 @app.get("/health")
 def health_check():
     return {"status": "ok", "message": "Service is running"}
+
 @app.get("/summarize/{document_id}")
 async def summarize_document(document_id: str):
     """Summarize a document locally without using Gemini or external APIs."""
@@ -195,5 +231,13 @@ async def summarize_document(document_id: str):
         }
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         logger.error(f"Summarization failed: {str(e)}")
-        raise HTTPException(status_code=500, detail="Summarization failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ADD THIS: Static files middleware to serve PDF files
+from fastapi.staticfiles import StaticFiles
+
+# Mount the uploads directory to serve static files
+app.mount("/static", StaticFiles(directory=UPLOAD_FOLDER), name="static")

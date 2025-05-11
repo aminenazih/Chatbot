@@ -5,6 +5,8 @@ import ProjectSubmission from './pages/ProjectSubmission';
 import Summarizer from './pages/summarizer';
 import Chat from './pages/Chat';
 import PdfViewer from './components/PdfViewer';
+import PdfViewerWithSummary from './pages/PdfViewerWithSummary';
+
 
 function App() {
   return (
@@ -22,7 +24,7 @@ function App() {
                     <Route path="/submit" element={<ProjectSubmission />} />
                     <Route path="/summarize" element={<Summarizer />} />
                     <Route path="/chat" element={<Chat />} />
-                    <Route path="/pdf/:docId" element={<PdfViewer />} />
+                    <Route path="/pdf/:docId" element={<PdfViewerWithSummary />} />
                     <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </main>
